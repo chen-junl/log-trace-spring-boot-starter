@@ -1,0 +1,3 @@
+#spring自动装配文件
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.chenjunl.log.config.LogTraceStarterAutoConfiguration
