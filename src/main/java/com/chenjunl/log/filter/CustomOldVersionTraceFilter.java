@@ -5,8 +5,7 @@ import cn.hutool.core.util.ReUtil;
 import com.chenjunl.log.config.LogTraceStarterConfig;
 import com.chenjunl.log.constant.LogStarterConstant;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.sleuth.Span;
-import org.springframework.cloud.sleuth.Tracer;
+import org.slf4j.MDC;
 import org.springframework.core.annotation.Order;
 
 import javax.servlet.Filter;
@@ -18,23 +17,19 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-
 /**
  * @author chenjunl
- * @description 适用于sleuth3.x.x以上版本
+ * @deprecated 不再考虑sleuth2.x.x版本
  * @date 2022/12/20
  */
 @Slf4j
 @Order(2)
-public class CustomTraceFilter implements Filter {
+public class CustomOldVersionTraceFilter implements Filter {
 
     private final LogTraceStarterConfig logTraceStarterConfig;
 
-    private final Tracer tracer;
-
-    public CustomTraceFilter(LogTraceStarterConfig logTraceStarterConfig, Tracer tracer) {
+    public CustomOldVersionTraceFilter(LogTraceStarterConfig logTraceStarterConfig) {
         this.logTraceStarterConfig = logTraceStarterConfig;
-        this.tracer = tracer;
     }
 
     @Override
@@ -53,7 +48,7 @@ public class CustomTraceFilter implements Filter {
             } else {
                 if (CollUtil.isNotEmpty(logTraceStarterConfig.getUrlPathWhiteRegexList())) {
                     if (logTraceStarterConfig.getUrlPathWhiteRegexList().stream().anyMatch(regex -> ReUtil.contains(regex, requestUri))) {
-                        addResponseHeader(request, (HttpServletResponse) servletResponse);
+                        addResponseHeader((HttpServletResponse) servletResponse);
                     }
                 }
             }
@@ -66,19 +61,14 @@ public class CustomTraceFilter implements Filter {
      *
      * @param httpServletResponse
      */
-    private void addResponseHeader(HttpServletRequest request, HttpServletResponse httpServletResponse) {
+    private void addResponseHeader(HttpServletResponse httpServletResponse) {
         String traceResponseHeader = LogStarterConstant.TRACE_RESPONSE_HEADER;
-        Span currentSpan = tracer.currentSpan();
-        if (currentSpan != null) {
-            String traceId = currentSpan.context().traceId();
-            //如果不为空添加响应头
-            if (null != traceId) {
-                httpServletResponse.addHeader(traceResponseHeader, traceId);
-            }else{
-                log.warn("未获取到当前请求tranceId,请求url:{}", request.getRequestURI());
-            }
+        String traceId = MDC.get(LogStarterConstant.MDC_TRACE_ID_KEY_2);
+        //如果不为空添加响应头
+        if (null != traceId) {
+            httpServletResponse.addHeader(traceResponseHeader, traceId);
         } else {
-            log.warn("未获取到当前请求span,请求url:{}", request.getRequestURI());
+            log.warn("获取当前线程追踪key:{},失败,请检查是否引入sleuth依赖", LogStarterConstant.MDC_TRACE_ID_KEY_2);
         }
     }
 }
